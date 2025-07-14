@@ -1,0 +1,4 @@
+name: zetten-cli
+version: 1.0.0
+path: packages
+dependencies: {}

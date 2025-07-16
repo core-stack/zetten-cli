@@ -2,10 +2,13 @@ package util
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 
+	"github.com/core-stack/zetten-cli/config"
 	"github.com/go-git/go-git/v5"
+	gitconfig "github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
@@ -13,32 +16,81 @@ import (
 	"golang.org/x/crypto/ssh/knownhosts"
 )
 
-// CloneRepo clona um repositório em uma tag específica
-// repoURL: URL do repositório (https/ssh)
-// destination: pasta de destino
-// tag: tag a ser clonada
-// authMethod: "none", "token", "ssh" ou "basic"
-// credentials: token, senha ou caminho para chave SSH
-func CloneRepo(repoURL, destination, tag, authMethod, credentials string) error {
-	// Verificar se o destino existe ou criá-lo
-	if err := os.MkdirAll(destination, 0755); err != nil {
+type CloneOptions struct {
+	RepoUrl     string
+	Destination string
+	Tag         string
+	Branch      string
+	AuthMethod  string
+	Credentials string
+}
+
+type CloneOpt func(*CloneOptions)
+
+func WithRepoUrl(repoUrl string) CloneOpt {
+	return func(o *CloneOptions) {
+		o.RepoUrl = repoUrl
+	}
+}
+
+func WithDestination(destination string) CloneOpt {
+	return func(o *CloneOptions) {
+		o.Destination = destination
+	}
+}
+
+func WithTag(tag string) CloneOpt {
+	return func(o *CloneOptions) {
+		o.Tag = tag
+	}
+}
+
+func WithBranch(branch string) CloneOpt {
+	return func(o *CloneOptions) {
+		o.Branch = branch
+	}
+}
+
+func WithAuth(authMethod, credentials string) CloneOpt {
+	return func(o *CloneOptions) {
+		o.AuthMethod = authMethod
+		o.Credentials = credentials
+	}
+}
+
+func CloneRepo(opts ...CloneOpt) error {
+	options := &CloneOptions{}
+	for _, opt := range opts {
+		opt(options)
+	}
+
+	if err := os.MkdirAll(options.Destination, 0755); err != nil {
 		return fmt.Errorf("failed to create destination directory: %w", err)
 	}
 
-	// Configurar autenticação
 	var auth transport.AuthMethod
 	var err error
+	u, err := url.Parse(options.RepoUrl)
+	if err != nil {
+		return fmt.Errorf("failed to parse repo URL: %w", err)
+	}
+	if options.AuthMethod == "" || options.Credentials == "" {
+		authConf, err := config.LoadAuthForHost(u.Host)
+		if err != nil {
+			return fmt.Errorf("failed to load auth for host %s: %w", u.Host, err)
+		}
+		options.AuthMethod = authConf.Method
+		options.Credentials = authConf.Credentials
+	}
 
-	switch authMethod {
+	switch options.AuthMethod {
 	case "token":
-		// Para GitHub, GitLab com token
 		auth = &http.BasicAuth{
-			Username: "git", // Pode ser qualquer coisa para token auth
-			Password: credentials,
+			Username: "git",
+			Password: options.Credentials,
 		}
 	case "basic":
-		// Para Bitbucket ou autenticação básica
-		parts := strings.Split(credentials, ":")
+		parts := strings.Split(options.Credentials, ":")
 		if len(parts) != 2 {
 			return fmt.Errorf("basic auth credentials must be in format 'username:password'")
 		}
@@ -47,13 +99,11 @@ func CloneRepo(repoURL, destination, tag, authMethod, credentials string) error 
 			Password: parts[1],
 		}
 	case "ssh":
-		// Autenticação por SSH
-		publicKeys, err := ssh.NewPublicKeysFromFile("git", credentials, "")
+		publicKeys, err := ssh.NewPublicKeysFromFile("git", options.Credentials, "")
 		if err != nil {
 			return fmt.Errorf("failed to parse SSH key: %w", err)
 		}
 
-		// Opcional: verificação de host conhecido
 		hostKeyCallback, err := knownhosts.New(os.ExpandEnv("$HOME/.ssh/known_hosts"))
 		if err == nil {
 			publicKeys.HostKeyCallback = hostKeyCallback
@@ -61,18 +111,32 @@ func CloneRepo(repoURL, destination, tag, authMethod, credentials string) error 
 
 		auth = publicKeys
 	case "none":
-		// Sem autenticação (repositório público)
 		auth = nil
 	default:
-		return fmt.Errorf("invalid auth method: %s", authMethod)
+		return fmt.Errorf("invalid auth method: %s", options.AuthMethod)
 	}
 
-	// Clonar o repositório
-	repo, err := git.PlainClone(destination, false, &git.CloneOptions{
-		URL:           repoURL,
+	var referenceName string
+	if options.Tag != "" {
+		referenceName = fmt.Sprintf("refs/tags/%s", options.Tag)
+	} else if options.Branch != "" {
+		referenceName = fmt.Sprintf("refs/heads/%s", options.Branch)
+	} else {
+		return fmt.Errorf("either tag or branch must be specified")
+	}
+
+	exists, err := RemoteRefExists(options.RepoUrl, referenceName, auth)
+	if err != nil {
+		return fmt.Errorf("failed to check remote ref: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("reference %s does not exist in remote repository", referenceName)
+	}
+
+	repo, err := git.PlainClone(options.Destination, false, &git.CloneOptions{
+		URL:           options.RepoUrl,
 		Auth:          auth,
-		Progress:      os.Stdout,
-		ReferenceName: plumbing.ReferenceName(fmt.Sprintf("refs/tags/%s", tag)),
+		ReferenceName: plumbing.ReferenceName(referenceName),
 		SingleBranch:  true,
 		Depth:         1,
 	})
@@ -80,12 +144,39 @@ func CloneRepo(repoURL, destination, tag, authMethod, credentials string) error 
 	if err != nil {
 		return fmt.Errorf("failed to clone repository: %w", err)
 	}
+	if options.Tag != "" {
+		_, err = repo.Tag(options.Tag)
+		if err != nil {
+			return fmt.Errorf("failed to find tag %s: %w", options.Tag, err)
+		}
+	}
 
-	// Verificar se a tag foi realmente encontrada
-	_, err = repo.Tag(tag)
-	if err != nil {
-		return fmt.Errorf("failed to find tag %s: %w", tag, err)
+	if options.Branch != "" {
+		_, err = repo.Branch(options.Branch)
+		if err != nil {
+			return fmt.Errorf("failed to find branch %s: %w", options.Branch, err)
+		}
 	}
 
 	return nil
+}
+
+func RemoteRefExists(repoURL, refTarget string, auth transport.AuthMethod) (bool, error) {
+	remote := git.NewRemote(nil, &gitconfig.RemoteConfig{
+		Name: "origin",
+		URLs: []string{repoURL},
+	})
+
+	refs, err := remote.List(&git.ListOptions{Auth: auth})
+	if err != nil {
+		return false, fmt.Errorf("failed to list remote references: %w", err)
+	}
+
+	for _, ref := range refs {
+		if ref.Name().String() == refTarget {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }

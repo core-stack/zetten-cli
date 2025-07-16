@@ -35,21 +35,21 @@ func (c *InitCommand) Run() error {
 	} else {
 		var error error
 		if c.Name == "" {
-			c.Name, error = prompt.PromptInput("📝 Project name", getDefaultProjectName())
+			c.Name, error = prompt.PromptInput("📝 Project name", prompt.WithDefaultValue(getDefaultProjectName()))
 		}
 		if error != nil {
 			return error
 		}
 
 		if c.Version == "" {
-			c.Version, error = prompt.PromptInput("📝 Project version", "1.0.0")
+			c.Version, error = prompt.PromptInput("📝 Project version", prompt.WithDefaultValue("1.0.0"))
 		}
 		if error != nil {
 			return error
 		}
 
 		if c.Path == "" {
-			c.Path, error = prompt.PromptInput("📝 Packages path", "packages")
+			c.Path, error = prompt.PromptInput("📝 Packages path", prompt.WithDefaultValue("packages"))
 		}
 		if error != nil {
 			return error

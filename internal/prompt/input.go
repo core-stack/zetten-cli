@@ -7,10 +7,27 @@ import (
 	"github.com/manifoldco/promptui"
 )
 
-func PromptInput(label string, defaultValue string) (string, error) {
+type PromptInputOpts struct {
+	DefaultValue string
+}
+
+type CreatePromptInputOpts func(*PromptInputOpts)
+
+func WithDefaultValue(defaultValue string) CreatePromptInputOpts {
+	return func(pio *PromptInputOpts) {
+		pio.DefaultValue = defaultValue
+	}
+}
+
+func PromptInput(label string, opts ...CreatePromptInputOpts) (string, error) {
+	options := &PromptInputOpts{}
+	for _, opt := range opts {
+		opt(options)
+	}
+
 	prompt := promptui.Prompt{
 		Label:   label,
-		Default: defaultValue,
+		Default: options.DefaultValue,
 	}
 	result, err := prompt.Run()
 	if err != nil {

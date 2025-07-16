@@ -10,22 +10,6 @@ import (
 
 type Dependency map[string]string
 
-type ProjectConfig struct {
-	Name         string     `yaml:"name"`
-	Version      string     `yaml:"version"`
-	Dependencies Dependency `yaml:"dependencies"`
-	Path         string     `yaml:"path"`
-}
-
-type PackageConfig struct {
-	Name         string     `yaml:"name"`
-	Version      string     `yaml:"version"`
-	Private      bool       `yaml:"private"`
-	Provider     string     `yaml:"provider"` // github, gitlab, bitbucket
-	Dependencies Dependency `yaml:"dependencies"`
-	Repository   string     `yaml:"repository"`
-}
-
 func LoadProjectConfig(dir string) (*ProjectConfig, error) {
 	if dir == "" {
 		dir = "."

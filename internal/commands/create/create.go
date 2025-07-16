@@ -31,14 +31,14 @@ func (c *CreateCommand) BeforeApply() error {
 func (c *CreateCommand) Run() error {
 	var err error
 	if c.Name == "" {
-		c.Name, err = prompt.PromptInput("📝 Package name", "my-package")
+		c.Name, err = prompt.PromptInput("📝 Package name", prompt.WithDefaultValue("my-package"))
 	}
 	if err != nil {
 		return err
 	}
 
 	if c.Version == "" {
-		c.Version, err = prompt.PromptInput("📝 Package version", "1.0.0")
+		c.Version, err = prompt.PromptInput("📝 Package version", prompt.WithDefaultValue("1.0.0"))
 	}
 	if err != nil {
 		return err
@@ -52,14 +52,14 @@ func (c *CreateCommand) Run() error {
 	}
 
 	if c.Provider == "" {
-		c.Provider, err = prompt.PromptInput("📝 Package provider", "github")
+		c.Provider, err = prompt.PromptInput("📝 Package provider", prompt.WithDefaultValue("github"))
 	}
 	if err != nil {
 		return err
 	}
 
 	if c.Repository == "" {
-		c.Repository, err = prompt.PromptInput("📝 Package repository", "core-stack/zetten")
+		c.Repository, err = prompt.PromptInput("📝 Package repository", prompt.WithDefaultValue("core-stack/zetten"))
 	}
 	if err != nil {
 		return err

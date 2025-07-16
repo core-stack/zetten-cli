@@ -1,12 +1,11 @@
-package util
+package zgit
 
 import (
 	"fmt"
-	"net/url"
 	"os"
 	"strings"
 
-	"github.com/core-stack/zetten-cli/config"
+	"github.com/core-stack/zetten-cli/internal/auth"
 	"github.com/go-git/go-git/v5"
 	gitconfig "github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -68,16 +67,13 @@ func CloneRepo(opts ...CloneOpt) error {
 		return fmt.Errorf("failed to create destination directory: %w", err)
 	}
 
-	var auth transport.AuthMethod
+	var authMethod transport.AuthMethod
 	var err error
-	u, err := url.Parse(options.RepoUrl)
-	if err != nil {
-		return fmt.Errorf("failed to parse repo URL: %w", err)
-	}
+
 	if options.AuthMethod == "" || options.Credentials == "" {
-		authConf, err := config.LoadAuthForHost(u.Host)
+		authConf, err := auth.Loader.FindAuth(options.RepoUrl)
 		if err != nil {
-			return fmt.Errorf("failed to load auth for host %s: %w", u.Host, err)
+			return fmt.Errorf("failed to load auth for url %s: %w", options.RepoUrl, err)
 		}
 		options.AuthMethod = authConf.Method
 		options.Credentials = authConf.Credentials
@@ -85,7 +81,7 @@ func CloneRepo(opts ...CloneOpt) error {
 
 	switch options.AuthMethod {
 	case "token":
-		auth = &http.BasicAuth{
+		authMethod = &http.BasicAuth{
 			Username: "git",
 			Password: options.Credentials,
 		}
@@ -94,7 +90,7 @@ func CloneRepo(opts ...CloneOpt) error {
 		if len(parts) != 2 {
 			return fmt.Errorf("basic auth credentials must be in format 'username:password'")
 		}
-		auth = &http.BasicAuth{
+		authMethod = &http.BasicAuth{
 			Username: parts[0],
 			Password: parts[1],
 		}
@@ -109,9 +105,9 @@ func CloneRepo(opts ...CloneOpt) error {
 			publicKeys.HostKeyCallback = hostKeyCallback
 		}
 
-		auth = publicKeys
+		authMethod = publicKeys
 	case "none":
-		auth = nil
+		authMethod = nil
 	default:
 		return fmt.Errorf("invalid auth method: %s", options.AuthMethod)
 	}
@@ -125,7 +121,7 @@ func CloneRepo(opts ...CloneOpt) error {
 		return fmt.Errorf("either tag or branch must be specified")
 	}
 
-	exists, err := RemoteRefExists(options.RepoUrl, referenceName, auth)
+	exists, err := RemoteRefExists(options.RepoUrl, referenceName, authMethod)
 	if err != nil {
 		return fmt.Errorf("failed to check remote ref: %w", err)
 	}
@@ -135,7 +131,7 @@ func CloneRepo(opts ...CloneOpt) error {
 
 	repo, err := git.PlainClone(options.Destination, false, &git.CloneOptions{
 		URL:           options.RepoUrl,
-		Auth:          auth,
+		Auth:          authMethod,
 		ReferenceName: plumbing.ReferenceName(referenceName),
 		SingleBranch:  true,
 		Depth:         1,

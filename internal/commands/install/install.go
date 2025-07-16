@@ -1,19 +1,23 @@
 package install
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/core-stack/zetten-cli/config"
+	"github.com/core-stack/zetten-cli/internal/prompt"
 	"github.com/core-stack/zetten-cli/internal/util"
+	"github.com/core-stack/zetten-cli/internal/zgit"
 )
 
 type InstallCommand struct {
-	Url      string `help:"The URL of the package to install" short:"u" long:"url"`
-	Provider string `help:"The provider of the package to install" short:"p" long:"provider"`
-	Name     string `help:"The name of the package to install" short:"n" long:"name"`
-	Tag      string `help:"The tag/version to install" short:"t" long:"tag"`
-	Branch   string `help:"The branch to install" short:"b" long:"branch"`
+	Url         string `help:"The URL of the package to install" short:"u" long:"url"`
+	Provider    string `help:"The provider of the package to install" short:"p" long:"provider"`
+	ProviderUrl string `help:"The provider url for custom git providers (eg: gitlab self hosted)" short:"purl" long:"provider_url"`
+	Name        string `help:"The name of the package to install" short:"n" long:"name"`
+	Tag         string `help:"The tag/version to install" short:"t" long:"tag"`
+	Branch      string `help:"The branch to install" short:"b" long:"branch"`
 
 	config *config.ProjectConfig
 }
@@ -50,17 +54,22 @@ func (c *InstallCommand) Run() error {
 		return err
 	}
 
-	opts := []util.CloneOpt{
-		util.WithRepoUrl(repoURL),
-		util.WithDestination(destination),
-		util.WithAuth(authMethod, credentials),
+	opts := []zgit.CloneOpt{
+		zgit.WithRepoUrl(repoURL),
+		zgit.WithDestination(destination),
+		zgit.WithAuth(authMethod, credentials),
 	}
 	if c.Tag != "" {
-		opts = append(opts, util.WithTag(c.Tag))
+		opts = append(opts, zgit.WithTag(c.Tag))
 	} else if c.Branch != "" {
-		opts = append(opts, util.WithBranch(c.Branch))
+		opts = append(opts, zgit.WithBranch(c.Branch))
 	}
-	return util.CloneRepo(opts...)
+	c.config.AddDependency(c.Url, util.Or(c.Tag, c.Branch))
+	if err = c.config.Save(); err != nil {
+		return errors.New("error saving new dependency")
+	}
+
+	return zgit.CloneRepo(opts...)
 }
 
 func (c *InstallCommand) buildRepoURL() (string, error) {
@@ -76,6 +85,11 @@ func (c *InstallCommand) buildRepoURL() (string, error) {
 		return fmt.Sprintf("https://gitlab.com/%s.git", c.Name), nil
 	case "bitbucket":
 		return fmt.Sprintf("https://bitbucket.org/%s.git", c.Name), nil
+	case "custom":
+		if c.ProviderUrl == "" {
+			prompt.PromptInput("What is the url of your git provider?")
+		}
+		return fmt.Sprintf("%s/%s.git", c.ProviderUrl, c.Name), nil
 	default:
 		return "", fmt.Errorf("unsupported provider: %s", c.Provider)
 	}

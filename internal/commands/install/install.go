@@ -6,9 +6,8 @@ import (
 	"strings"
 
 	"github.com/core-stack/zetten-cli/config"
-	"github.com/core-stack/zetten-cli/internal/prompt"
+	"github.com/core-stack/zetten-cli/internal/git_util"
 	"github.com/core-stack/zetten-cli/internal/util"
-	"github.com/core-stack/zetten-cli/internal/zgit"
 )
 
 type InstallCommand struct {
@@ -32,6 +31,10 @@ func (c *InstallCommand) BeforeApply() error {
 }
 
 func (c *InstallCommand) Run() error {
+	if c.Provider == "" {
+		c.Provider = c.config.DefaultProvider
+	}
+
 	if c.Url == "" && (c.Provider == "" || c.Name == "") {
 		return fmt.Errorf("you must provide either a full URL or both provider and name")
 	}
@@ -49,32 +52,28 @@ func (c *InstallCommand) Run() error {
 		return err
 	}
 
-	authMethod, credentials, err := c.getAuthConfig()
-	if err != nil {
-		return err
-	}
-
-	opts := []zgit.CloneOpt{
-		zgit.WithRepoUrl(repoURL),
-		zgit.WithDestination(destination),
-		zgit.WithAuth(authMethod, credentials),
-	}
+	opts := []git_util.CloneOpt{}
 	if c.Tag != "" {
-		opts = append(opts, zgit.WithTag(c.Tag))
+		opts = append(opts, git_util.WithTag(c.Tag))
 	} else if c.Branch != "" {
-		opts = append(opts, zgit.WithBranch(c.Branch))
+		opts = append(opts, git_util.WithBranch(c.Branch))
 	}
 	c.config.AddDependency(c.Url, util.Or(c.Tag, c.Branch))
 	if err = c.config.Save(); err != nil {
 		return errors.New("error saving new dependency")
 	}
 
-	return zgit.CloneRepo(opts...)
+	return git_util.CloneRepo(repoURL, destination, opts...)
 }
 
 func (c *InstallCommand) buildRepoURL() (string, error) {
 	if c.Url != "" {
 		return c.normalizeURL(c.Url), nil
+	}
+
+	// check if is url
+	if util.IsValidURL(c.Provider) {
+		return fmt.Sprintf("%s/%s.git", c.Provider, c.Name), nil
 	}
 
 	// Construir URL baseada no provider
@@ -85,11 +84,6 @@ func (c *InstallCommand) buildRepoURL() (string, error) {
 		return fmt.Sprintf("https://gitlab.com/%s.git", c.Name), nil
 	case "bitbucket":
 		return fmt.Sprintf("https://bitbucket.org/%s.git", c.Name), nil
-	case "custom":
-		if c.ProviderUrl == "" {
-			prompt.PromptInput("What is the url of your git provider?")
-		}
-		return fmt.Sprintf("%s/%s.git", c.ProviderUrl, c.Name), nil
 	default:
 		return "", fmt.Errorf("unsupported provider: %s", c.Provider)
 	}
@@ -118,7 +112,7 @@ func (c *InstallCommand) buildDestinationPath() (string, error) {
 		if len(parts) < 2 {
 			return "", fmt.Errorf("invalid name format, should be 'owner/repo'")
 		}
-		repoName = parts[1]
+		repoName = parts[len(parts)-1]
 	} else {
 		// Extrair do URL
 		parts := strings.Split(strings.TrimSuffix(c.Url, ".git"), "/")
@@ -126,25 +120,4 @@ func (c *InstallCommand) buildDestinationPath() (string, error) {
 	}
 
 	return fmt.Sprintf("%s/%s", c.config.Path, repoName), nil
-}
-
-func (c *InstallCommand) getAuthConfig() (string, string, error) {
-	// Verificar configurações globais para autenticação
-	// if c.config.Git.AuthMethod != "" {
-	// 	return c.config.Git.AuthMethod, c.config.Git.Credentials, nil
-	// }
-
-	// Se não houver configuração, tentar autenticação SSH padrão
-	if sshKeyExists() {
-		return "ssh", "~/.ssh/id_rsa", nil
-	}
-
-	// Caso contrário, sem autenticação
-	return "none", "", nil
-}
-
-func sshKeyExists() bool {
-	// Implementar verificação se a chave SSH padrão existe
-	// Pode ser expandido para verificar ~/.ssh/id_rsa
-	return false
 }

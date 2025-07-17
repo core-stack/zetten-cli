@@ -1,4 +1,4 @@
-package zgit
+package git_util
 
 import (
 	"fmt"
@@ -26,18 +26,6 @@ type CloneOptions struct {
 
 type CloneOpt func(*CloneOptions)
 
-func WithRepoUrl(repoUrl string) CloneOpt {
-	return func(o *CloneOptions) {
-		o.RepoUrl = repoUrl
-	}
-}
-
-func WithDestination(destination string) CloneOpt {
-	return func(o *CloneOptions) {
-		o.Destination = destination
-	}
-}
-
 func WithTag(tag string) CloneOpt {
 	return func(o *CloneOptions) {
 		o.Tag = tag
@@ -57,8 +45,11 @@ func WithAuth(authMethod, credentials string) CloneOpt {
 	}
 }
 
-func CloneRepo(opts ...CloneOpt) error {
-	options := &CloneOptions{}
+func CloneRepo(repoUrl, destination string, opts ...CloneOpt) error {
+	options := &CloneOptions{
+		RepoUrl:     repoUrl,
+		Destination: destination,
+	}
 	for _, opt := range opts {
 		opt(options)
 	}

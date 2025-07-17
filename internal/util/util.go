@@ -1,6 +1,9 @@
 package util
 
-import "strings"
+import (
+	"net/url"
+	"strings"
+)
 
 func FindInSlice[T any](slice []T, filter func(t T) bool) (T, bool) {
 	for _, element := range slice {
@@ -41,4 +44,22 @@ func Or(strs ...string) string {
 		}
 	}
 	return ""
+}
+
+func IsValidURL(toTest string) bool {
+	u, err := url.Parse(toTest)
+	if err != nil {
+		return false
+	}
+
+	if u.Scheme == "" || u.Host == "" {
+		return false
+	}
+
+	_, err = url.ParseRequestURI(toTest)
+	if err != nil {
+		return false
+	}
+
+	return true
 }

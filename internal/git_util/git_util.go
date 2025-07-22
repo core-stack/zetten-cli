@@ -63,6 +63,7 @@ func CloneRepo(repoUrl, destination string, opts ...CloneOpt) error {
 
 	if options.AuthMethod == "" || options.Credentials == "" {
 		authConf, err := auth.Loader.FindAuth(options.RepoUrl)
+		fmt.Println(authConf)
 		if err != nil {
 			return fmt.Errorf("failed to load auth for url %s: %w", options.RepoUrl, err)
 		}

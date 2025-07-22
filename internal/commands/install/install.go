@@ -13,7 +13,7 @@ import (
 type InstallCommand struct {
 	Url         string `help:"The URL of the package to install" short:"u" long:"url"`
 	Provider    string `help:"The provider of the package to install" short:"p" long:"provider"`
-	ProviderUrl string `help:"The provider url for custom git providers (eg: gitlab self hosted)" short:"purl" long:"provider_url"`
+	ProviderUrl string `help:"The provider url for custom git providers (eg: gitlab self hosted)" short:"c" long:"provider_url"`
 	Name        string `help:"The name of the package to install" short:"n" long:"name"`
 	Tag         string `help:"The tag/version to install" short:"t" long:"tag"`
 	Branch      string `help:"The branch to install" short:"b" long:"branch"`
@@ -51,19 +51,21 @@ func (c *InstallCommand) Run() error {
 	if err != nil {
 		return err
 	}
-
 	opts := []git_util.CloneOpt{}
 	if c.Tag != "" {
 		opts = append(opts, git_util.WithTag(c.Tag))
 	} else if c.Branch != "" {
 		opts = append(opts, git_util.WithBranch(c.Branch))
 	}
+
+	if err = git_util.CloneRepo(repoURL, destination, opts...); err != nil {
+		return err
+	}
 	c.config.AddDependency(c.Url, util.Or(c.Tag, c.Branch))
 	if err = c.config.Save(); err != nil {
 		return errors.New("error saving new dependency")
 	}
-
-	return git_util.CloneRepo(repoURL, destination, opts...)
+	return nil
 }
 
 func (c *InstallCommand) buildRepoURL() (string, error) {

@@ -18,11 +18,11 @@ func FindInSlice[T any](slice []T, filter func(t T) bool) (T, bool) {
 func FindInMap[K comparable, V any](m map[K]V, callback func(K, V) bool) (V, bool) {
 	for key, value := range m {
 		if callback(key, value) {
-			return value, false
+			return value, true
 		}
 	}
 	var zero V
-	return zero, true
+	return zero, false
 }
 
 func MergeMap[K comparable, V any](maps ...map[K]V) map[K]V {
@@ -57,9 +57,6 @@ func IsValidURL(toTest string) bool {
 	}
 
 	_, err = url.ParseRequestURI(toTest)
-	if err != nil {
-		return false
-	}
 
-	return true
+	return err == nil
 }

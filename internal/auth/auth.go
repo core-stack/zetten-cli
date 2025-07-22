@@ -12,7 +12,7 @@ import (
 	"github.com/goccy/go-yaml"
 )
 
-var AUTH_FILE_NAME = "zetten-auth.yml"
+var DEFAULT_AUTH_FILE_NAME = "zetten-auth.yml"
 
 type AuthConfig struct {
 	Method      string `yaml:"method"`
@@ -22,7 +22,7 @@ type AuthConfig struct {
 type AuthMap map[string]AuthConfig
 
 type AuthConfigLoader struct {
-	configs AuthMap
+	Configs AuthMap
 }
 
 func (l *AuthConfigLoader) FindAuth(repoUrl string) (*AuthConfig, error) {
@@ -33,23 +33,22 @@ func (l *AuthConfigLoader) FindAuth(repoUrl string) (*AuthConfig, error) {
 
 	host := u.Host
 	urlPaths := strings.Split(u.Path, "/")
-
 	// verify decremental repository path
 	for i := len(urlPaths); i >= 1; i-- {
 		path := urlPaths[:i]
-		cfg, find := l.loadByHostPath(host, strings.Join(path, "/"))
+		cfg, find := l.LoadByHostPath(host, strings.Join(path, "/"))
 		if find {
 			return cfg, nil
 		}
 	}
-	return nil, errors.New("Auth config not found for this repo")
+	return nil, errors.New("auth config not found for this repo")
 }
 
-func (l *AuthConfigLoader) loadByHostPath(host string, path string) (*AuthConfig, bool) {
-	hostPath := fmt.Sprintf("%s/%s", host, path)
+func (l *AuthConfigLoader) LoadByHostPath(host string, path string) (*AuthConfig, bool) {
+	hostPath := fmt.Sprintf("%s%s", host, path)
 
 	// find config by host path
-	cfg, exists := util.FindInMap(l.configs,
+	cfg, exists := util.FindInMap(l.Configs,
 		func(k string, v AuthConfig) bool {
 			return k == hostPath
 		},
@@ -61,10 +60,13 @@ func (l *AuthConfigLoader) loadByHostPath(host string, path string) (*AuthConfig
 	}
 }
 
-func newAuthConfigLoader() *AuthConfigLoader {
+func NewAuthConfigLoader(fileName string) *AuthConfigLoader {
+	if fileName == "" {
+		fileName = DEFAULT_AUTH_FILE_NAME
+	}
 	paths := []string{
-		AUTH_FILE_NAME, // local
-		filepath.Join(os.Getenv("HOME"), fmt.Sprintf(".zetten/%s", AUTH_FILE_NAME)), // global
+		fileName, // local
+		filepath.Join(os.Getenv("HOME"), fmt.Sprintf(".zetten/%s", fileName)), // global
 	}
 	configs := make(AuthMap)
 	for _, path := range paths {
@@ -75,15 +77,17 @@ func newAuthConfigLoader() *AuthConfigLoader {
 
 		var auths AuthMap
 		if err := yaml.Unmarshal(data, &auths); err != nil {
-			fmt.Println(fmt.Sprintf("invalid YAML in %s: %w", path, err))
+			// Alterado para usar %v e adicionado continue
+			fmt.Printf("invalid YAML in %s: %v\n", path, err)
+			continue
 		}
 
 		configs = util.MergeMap(configs, auths)
 	}
 
 	return &AuthConfigLoader{
-		configs: configs,
+		Configs: configs,
 	}
 }
 
-var Loader = newAuthConfigLoader()
+var Loader = NewAuthConfigLoader(DEFAULT_AUTH_FILE_NAME)

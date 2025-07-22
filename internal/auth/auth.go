@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -41,7 +40,7 @@ func (l *AuthConfigLoader) FindAuth(repoUrl string) (*AuthConfig, error) {
 			return cfg, nil
 		}
 	}
-	return nil, errors.New("auth config not found for this repo")
+	return nil, ErrNoAuthConfigFound
 }
 
 func (l *AuthConfigLoader) LoadByHostPath(host string, path string) (*AuthConfig, bool) {
@@ -77,7 +76,6 @@ func NewAuthConfigLoader(fileName string) *AuthConfigLoader {
 
 		var auths AuthMap
 		if err := yaml.Unmarshal(data, &auths); err != nil {
-			// Alterado para usar %v e adicionado continue
 			fmt.Printf("invalid YAML in %s: %v\n", path, err)
 			continue
 		}
@@ -85,9 +83,7 @@ func NewAuthConfigLoader(fileName string) *AuthConfigLoader {
 		configs = util.MergeMap(configs, auths)
 	}
 
-	return &AuthConfigLoader{
-		Configs: configs,
-	}
+	return &AuthConfigLoader{Configs: configs}
 }
 
 var Loader = NewAuthConfigLoader(DEFAULT_AUTH_FILE_NAME)

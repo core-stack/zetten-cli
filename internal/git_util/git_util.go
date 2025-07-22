@@ -63,12 +63,17 @@ func CloneRepo(repoUrl, destination string, opts ...CloneOpt) error {
 
 	if options.AuthMethod == "" || options.Credentials == "" {
 		authConf, err := auth.Loader.FindAuth(options.RepoUrl)
-		fmt.Println(authConf)
 		if err != nil {
-			return fmt.Errorf("failed to load auth for url %s: %w", options.RepoUrl, err)
+			if err != auth.ErrNoAuthConfigFound {
+				return fmt.Errorf("failed to load auth for url %s: %w", options.RepoUrl, err)
+			} else {
+				options.AuthMethod = "none"
+				fmt.Printf("no auth found for %s, cloning without authentication\n", options.RepoUrl)
+			}
+		} else {
+			options.AuthMethod = authConf.Method
+			options.Credentials = authConf.Credentials
 		}
-		options.AuthMethod = authConf.Method
-		options.Credentials = authConf.Credentials
 	}
 
 	switch options.AuthMethod {

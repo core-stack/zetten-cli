@@ -60,3 +60,11 @@ func IsValidURL(toTest string) bool {
 
 	return err == nil
 }
+
+func ExtractPathFromURL(targetUrl string) string {
+	u, err := url.Parse(targetUrl)
+	if err != nil {
+		return ""
+	}
+	return u.Path
+}

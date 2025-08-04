@@ -9,6 +9,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	gitconfig "github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/storer"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
@@ -172,4 +173,25 @@ func RemoteRefExists(repoURL, refTarget string, auth transport.AuthMethod) (bool
 	}
 
 	return false, nil
+}
+
+func ExtractBranchs(refs storer.ReferenceIter) []string {
+	var branches []string
+	refs.ForEach(func(ref *plumbing.Reference) error {
+		if ref.Name().IsBranch() {
+			branches = append(branches, strings.TrimPrefix(ref.Name().String(), "refs/heads/"))
+		}
+		return nil
+	})
+	return branches
+}
+func ExtractTags(refs storer.ReferenceIter) []string {
+	var tags []string
+	refs.ForEach(func(ref *plumbing.Reference) error {
+		if ref.Name().IsTag() {
+			tags = append(tags, strings.TrimPrefix(ref.Name().String(), "refs/tags/"))
+		}
+		return nil
+	})
+	return tags
 }

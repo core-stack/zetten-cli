@@ -1,28 +1,24 @@
 package install
 
 import (
-	"errors"
-	"fmt"
-	"strings"
-
-	"github.com/core-stack/zetten-cli/config"
+	"github.com/core-stack/zetten-cli/internal/core/project"
 	"github.com/core-stack/zetten-cli/internal/git_util"
+	"github.com/core-stack/zetten-cli/internal/prompt"
 	"github.com/core-stack/zetten-cli/internal/util"
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 )
 
 type InstallCommand struct {
-	Url         string `help:"The URL of the package to install" short:"u" long:"url"`
-	Provider    string `help:"The provider of the package to install" short:"p" long:"provider"`
-	ProviderUrl string `help:"The provider url for custom git providers (eg: gitlab self hosted)" short:"c" long:"provider_url"`
-	Name        string `help:"The name of the package to install" short:"n" long:"name"`
-	Tag         string `help:"The tag/version to install" short:"t" long:"tag"`
-	Branch      string `help:"The branch to install" short:"b" long:"branch"`
+	Url    string `help:"The URL of the package to install" short:"u" long:"url"`
+	Tag    string `help:"The tag/version to install" short:"t" long:"tag"`
+	Branch string `help:"The branch to install" short:"b" long:"branch"`
 
-	config *config.ProjectConfig
+	config *project.ProjectConfig
 }
 
 func (c *InstallCommand) BeforeApply() error {
-	config, err := config.LoadProjectConfig(".")
+	config, err := project.LoadProjectConfig("zetten.yml")
 	if err != nil {
 		return err
 	}
@@ -31,95 +27,88 @@ func (c *InstallCommand) BeforeApply() error {
 }
 
 func (c *InstallCommand) Run() error {
-	if c.Provider == "" {
-		c.Provider = c.config.DefaultProvider
+	var err error
+	if c.Url == "" {
+		c.Url, err = prompt.PromptInput("📝 Package URL")
+		if err != nil {
+			return err
+		}
 	}
-
-	if c.Url == "" && (c.Provider == "" || c.Name == "") {
-		return fmt.Errorf("you must provide either a full URL or both provider and name")
+	repo, err := c.config.Root.OpenOrClonePackage(c.Url)
+	if err != nil {
+		return err
 	}
 	if c.Tag == "" && c.Branch == "" {
-		return fmt.Errorf("you must provide either a tag or a branch")
+		if err := c.SelectTagOrBranch(repo); err != nil {
+			return err
+		}
+	} else {
+		if c.Tag != "" {
+			_, err = repo.Tag(c.Tag)
+			if err != nil {
+				if err == plumbing.ErrReferenceNotFound {
+					if err = c.SelectTagOrBranch(repo); err != nil {
+						return err
+					}
+				}
+				return err
+			}
+		} else if c.Branch != "" {
+			_, err = repo.Branch(c.Branch)
+			if err != nil {
+				if err == plumbing.ErrReferenceNotFound {
+					if err = c.SelectTagOrBranch(repo); err != nil {
+						return err
+					}
+				}
+				return err
+			}
+		}
 	}
+	c.config.Install(c.Url, util.Or(c.Tag, c.Branch))
+	return nil
+}
 
-	repoURL, err := c.buildRepoURL()
+func (c *InstallCommand) SelectTag(repo *git.Repository) error {
+	iterator, err := repo.Tags()
 	if err != nil {
 		return err
 	}
+	tags := git_util.ExtractTags(iterator)
 
-	destination, err := c.buildDestinationPath()
+	c.Tag, err = prompt.PromptSelect("📝 Tag", tags, true)
 	if err != nil {
 		return err
-	}
-	opts := []git_util.CloneOpt{}
-	if c.Tag != "" {
-		opts = append(opts, git_util.WithTag(c.Tag))
-	} else if c.Branch != "" {
-		opts = append(opts, git_util.WithBranch(c.Branch))
-	}
-
-	if err = git_util.CloneRepo(repoURL, destination, opts...); err != nil {
-		return err
-	}
-	c.config.AddDependency(c.Url, util.Or(c.Tag, c.Branch))
-	if err = c.config.Save(); err != nil {
-		return errors.New("error saving new dependency")
 	}
 	return nil
 }
 
-func (c *InstallCommand) buildRepoURL() (string, error) {
-	if c.Url != "" {
-		return c.normalizeURL(c.Url), nil
+func (c *InstallCommand) SelectBranch(repo *git.Repository) error {
+	branchs, err := repo.Branches()
+	if err != nil {
+		return err
 	}
-
-	// check if is url
-	if util.IsValidURL(c.Provider) {
-		return fmt.Sprintf("%s/%s.git", c.Provider, c.Name), nil
+	c.Branch, err = prompt.PromptSelect("📝 Branch", git_util.ExtractBranchs(branchs), true)
+	if err != nil {
+		return err
 	}
-
-	// Construir URL baseada no provider
-	switch strings.ToLower(c.Provider) {
-	case "github":
-		return fmt.Sprintf("https://github.com/%s.git", c.Name), nil
-	case "gitlab":
-		return fmt.Sprintf("https://gitlab.com/%s.git", c.Name), nil
-	case "bitbucket":
-		return fmt.Sprintf("https://bitbucket.org/%s.git", c.Name), nil
-	default:
-		return "", fmt.Errorf("unsupported provider: %s", c.Provider)
-	}
+	return nil
 }
 
-func (c *InstallCommand) normalizeURL(url string) string {
-	// Garantir que a URL termina com .git
-	if !strings.HasSuffix(url, ".git") {
-		url += ".git"
-	}
-
-	// Converter URL SSH para HTTPS se necessário
-	if strings.HasPrefix(url, "git@") {
-		url = strings.Replace(url, ":", "/", 1)
-		url = strings.Replace(url, "git@", "https://", 1)
-	}
-
-	return url
-}
-
-func (c *InstallCommand) buildDestinationPath() (string, error) {
-	var repoName string
-
-	if c.Name != "" {
-		parts := strings.Split(c.Name, "/")
-		if len(parts) < 2 {
-			return "", fmt.Errorf("invalid name format, should be 'owner/repo'")
+func (c *InstallCommand) SelectTagOrBranch(repo *git.Repository) error {
+	for c.Tag == "" && c.Branch == "" {
+		selected, err := prompt.PromptSelect("📝 Select tag or branch", []string{"tag", "branch"}, false)
+		if err != nil {
+			return err
 		}
-		repoName = parts[len(parts)-1]
-	} else {
-		// Extrair do URL
-		parts := strings.Split(strings.TrimSuffix(c.Url, ".git"), "/")
-		repoName = parts[len(parts)-1]
+		if selected == "tag" {
+			err = c.SelectTag(repo)
+		} else {
+			err = c.SelectBranch(repo)
+		}
+		if err != nil && err != prompt.GoBack {
+			return err
+		}
 	}
-
-	return fmt.Sprintf("%s/%s", c.config.Path, repoName), nil
+	return nil
 }

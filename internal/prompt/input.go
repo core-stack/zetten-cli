@@ -1,6 +1,7 @@
 package prompt
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -62,4 +63,31 @@ func PromptConfirm(label string, defaultYes bool) (bool, error) {
 	}
 
 	return strings.ToLower(result) == "y", nil
+}
+
+var (
+	GoBack    = errors.New("go back")
+	GoBackStr = "<- Go back"
+)
+
+func PromptSelect(label string, items []string, canGoBack bool) (string, error) {
+
+	if canGoBack {
+		items = append([]string{GoBackStr}, items...)
+	}
+	prompt := promptui.Select{
+		Label: label,
+		Items: items,
+		Size:  10,
+	}
+
+	_, result, err := prompt.Run()
+	if err != nil {
+		return "", fmt.Errorf("❌ Error selecting %s: %v\n", label, err)
+	}
+	if canGoBack && result == GoBackStr {
+		return "", GoBack
+	}
+	fmt.Printf("✔ %s: %s\n", label, result)
+	return result, nil
 }

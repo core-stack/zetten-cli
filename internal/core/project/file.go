@@ -22,15 +22,21 @@ func (f *ProjectFile) Save() error {
 	return util.SaveYAMLIndented(configPath, f)
 }
 
-func (p *ProjectFile) AddDependency(name, version string, autoSave bool) error {
-	p.Dependencies[name] = version
+func (p *ProjectFile) AddDependency(url, version string, autoSave bool) error {
+	if p.Dependencies == nil {
+		p.Dependencies = make(map[string]string)
+	}
+	p.Dependencies[url] = version
 	if autoSave {
 		return p.Save()
 	}
 	return nil
 }
-func (p *ProjectFile) RemoveDependency(name string, autoSave bool) error {
-	delete(p.Dependencies, name)
+func (p *ProjectFile) RemoveDependency(url string, autoSave bool) error {
+	if p.Dependencies == nil {
+		p.Dependencies = make(map[string]string)
+	}
+	delete(p.Dependencies, url)
 	if autoSave {
 		return p.Save()
 	}

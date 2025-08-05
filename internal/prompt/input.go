@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/manifoldco/promptui"
+	MultipleChoice "github.com/thewolfnl/go-multiplechoice"
 )
 
 type PromptInputOpts struct {
@@ -73,7 +74,7 @@ var (
 func PromptSelect(label string, items []string, canGoBack bool) (string, error) {
 
 	if canGoBack {
-		items = append([]string{GoBackStr}, items...)
+		items = append(items, GoBackStr)
 	}
 	prompt := promptui.Select{
 		Label: label,
@@ -90,4 +91,9 @@ func PromptSelect(label string, items []string, canGoBack bool) (string, error) 
 	}
 	fmt.Printf("✔ %s: %s\n", label, result)
 	return result, nil
+}
+
+func PromptMultiSelect(label string, items []string) ([]string, error) {
+	res := MultipleChoice.MultiSelection(label, items)
+	return res, nil
 }

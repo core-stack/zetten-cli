@@ -85,7 +85,7 @@ func TestRemove_Success(t *testing.T) {
 		},
 	}
 
-	err := cfg.Remove("github.com/user/repo")
+	err := cfg.Uninstall([]string{"github.com/user/repo"})
 	assert.NoError(t, err)
 	assert.NotContains(t, cfg.Dependencies, "github.com/user/repo")
 	assert.NoDirExists(t, pkgPath)

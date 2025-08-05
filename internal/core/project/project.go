@@ -2,7 +2,6 @@ package project
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -36,7 +35,6 @@ func (p *ProjectConfig) Install(url, tagOrBranch string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(fmt.Printf("📁 %s found, installing...", url))
 	err = p.Root.Checkout(url, tagOrBranch)
 	if err != nil {
 		return err
@@ -54,16 +52,55 @@ func (p *ProjectConfig) Install(url, tagOrBranch string) error {
 	return nil
 }
 
-func (p *ProjectConfig) Remove(url string) error {
-	if url == "" {
-		return errors.New("url is required")
+func (p *ProjectConfig) Uninstall(urls []string) error {
+	if p.Dependencies == nil || len(p.Dependencies) == 0 {
+		return errors.New("no dependencies found")
 	}
-	err := os.Remove(filepath.Join(p.PackagesPath, util.ExtractPathFromURL(url)))
+	if len(urls) == 0 {
+		return errors.New("no urls provided")
+	}
+	for _, url := range urls {
+		if url == "" {
+			continue
+		}
+		err := os.RemoveAll(filepath.Join(p.PackagesPath, util.ExtractPathFromURL(url)))
+		if err != nil {
+			return err
+		}
+		p.RemoveDependency(url, false)
+	}
+	err := p.cleanPackageFolders()
 	if err != nil {
 		return err
 	}
-	delete(p.Dependencies, url)
 	return p.Save()
+}
+
+func (p *ProjectConfig) cleanPackageFolders() error {
+	var emptyFolders []string
+	files, err := os.ReadDir(p.PackagesPath)
+	if err != nil {
+		return err
+	}
+	for _, f := range files {
+		if f.IsDir() {
+			entries, err := os.ReadDir(filepath.Join(p.PackagesPath, f.Name()))
+			if err != nil {
+				return err
+			}
+			if len(entries) == 0 {
+				emptyFolders = append(emptyFolders, filepath.Join(p.PackagesPath, f.Name()))
+			}
+		}
+	}
+
+	for _, folder := range emptyFolders {
+		err := os.RemoveAll(folder)
+		if err != nil {
+			continue
+		}
+	}
+	return nil
 }
 
 func (p *ProjectConfig) Sync() error {

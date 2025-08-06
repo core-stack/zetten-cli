@@ -7,9 +7,8 @@ import (
 )
 
 type InstallCommand struct {
-	Url    string `help:"The URL of the package to install" short:"u" long:"url"`
-	Tag    string `help:"The tag/version to install" short:"t" long:"tag"`
-	Branch string `help:"The branch to install" short:"b" long:"branch"`
+	Url string `help:"The URL of the package to install" short:"u" long:"url"`
+	Tag string `help:"The tag/version to install" short:"t" long:"tag"`
 
 	config *project.ProjectConfig
 }
@@ -26,7 +25,7 @@ func (c *InstallCommand) BeforeApply() error {
 func (c *InstallCommand) Run() error {
 	var err error
 	if c.Url == "" {
-		c.Url, err = prompt.PromptInput("📝 Package URL")
+		c.Url, err = prompt.PromptInput("Package URL")
 		if err != nil {
 			return err
 		}
@@ -35,10 +34,9 @@ func (c *InstallCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	tagOrBranch, err := git_util.LoadBranchOrTag(repo, c.Branch, c.Tag)
+	tag, err := git_util.LoadTag(repo, c.Tag)
 	if err != nil {
 		return err
 	}
-	c.config.Install(c.Url, tagOrBranch)
-	return nil
+	return c.config.Install(c.Url, tag)
 }

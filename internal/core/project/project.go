@@ -3,6 +3,7 @@ package project
 import (
 	"errors"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -23,19 +24,19 @@ func (p *ProjectConfig) CopyFromRoot(url string) error {
 	return p.Root.CopyRootFiles(url, destination, []string{".git"})
 }
 
-func (p *ProjectConfig) Install(url, tagOrBranch string) error {
+func (p *ProjectConfig) Install(url, tag string) error {
 	if url == "" {
 		return errors.New("url is required")
 	}
-	if tagOrBranch == "" {
-		return errors.New("tag or branch is required")
+	if tag == "" {
+		return errors.New("tag is required")
 	}
 
 	_, err := p.Root.OpenOrClonePackage(url)
 	if err != nil {
 		return err
 	}
-	err = p.Root.Checkout(url, tagOrBranch)
+	_, err = p.Root.Checkout(url, tag)
 	if err != nil {
 		return err
 	}
@@ -45,7 +46,7 @@ func (p *ProjectConfig) Install(url, tagOrBranch string) error {
 		return err
 	}
 
-	if err = p.AddDependency(url, tagOrBranch, true); err != nil {
+	if err = p.AddDependency(url, tag, true); err != nil {
 		return errors.New("error saving new dependency")
 	}
 
@@ -110,6 +111,16 @@ func (p *ProjectConfig) Sync() error {
 		}
 	}
 	return nil
+}
+
+func (p *ProjectConfig) Promote(url, tag string) error {
+	version := p.Dependencies[url]
+	err := p.Root.Promote(url, version, tag, path.Join(p.PackagesPath, util.ExtractPathFromURL(url)))
+	if err != nil {
+		return err
+	}
+	p.Dependencies[url] = tag
+	return p.Save()
 }
 
 func LoadProjectConfig(path string) (*ProjectConfig, error) {

@@ -19,7 +19,7 @@ func TestLoadPackageConfig_NotFound(t *testing.T) {
 func TestLoadPackageConfig_InvalidYAML(t *testing.T) {
 	tmp := t.TempDir()
 	path := filepath.Join(tmp, "invalid.yaml")
-	os.WriteFile(path, []byte("branch: [invalid"), 0644)
+	os.WriteFile(path, []byte("tag: [invalid"), 0644)
 
 	cfg, err := pkg.LoadPackageConfig(path)
 	assert.Nil(t, cfg)

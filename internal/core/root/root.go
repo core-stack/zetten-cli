@@ -21,8 +21,9 @@ type IRootConfig interface {
 	BuildRootPackagePath(url string) string
 	HasPackage(url string) bool
 	OpenOrClonePackage(url string) (*git.Repository, error)
-	Checkout(url, tagOrbranch string) error
+	Checkout(url, tag string) (*git.Repository, error)
 	CopyRootFiles(url, destination string, ignore []string) error
+	Promote(url, tag, newTag, packageDir string) error
 }
 type RootConfig struct {
 	RootFile `yaml:",inline"`
@@ -53,38 +54,61 @@ func (r *RootConfig) OpenOrClonePackage(url string) (*git.Repository, error) {
 	return repo, nil
 }
 
-func (r *RootConfig) Checkout(url, tagOrbranch string) error {
-	if tagOrbranch == "" {
-		return fmt.Errorf("❌ No tag or branch specified")
+func (r *RootConfig) Checkout(url, tag string) (*git.Repository, error) {
+	if tag == "" {
+		return nil, fmt.Errorf("No tag specified")
 	}
 	if url == "" {
-		return fmt.Errorf("❌ No url specified")
+		return nil, fmt.Errorf("No url specified")
 	}
 	repo, err := r.OpenOrClonePackage(url)
 	if err != nil {
+		return nil, err
+	}
+	wt, err := repo.Worktree()
+	if err != nil {
+		return nil, err
+	}
+	err = wt.Checkout(&git.CheckoutOptions{Hash: plumbing.NewHash(tag)})
+	if err != nil {
+		return nil, err
+	}
+	return repo, nil
+}
+
+func (r *RootConfig) Promote(url, baseTag, newTag, packageDir string) error {
+	repo, err := r.Checkout(url, baseTag)
+	if err != nil {
 		return err
 	}
+
+	srcDir := r.BuildRootPackagePath(url)
+	err = util.CopyDir(packageDir, srcDir, []string{})
+	if err != nil {
+		return err
+	}
+
 	wt, err := repo.Worktree()
 	if err != nil {
 		return err
 	}
-	if _, err = repo.Branch(tagOrbranch); err != nil {
+
+	err = wt.AddWithOptions(&git.AddOptions{All: true})
+	if err != nil {
 		return err
 	}
-	err = wt.Checkout(&git.CheckoutOptions{Branch: plumbing.NewBranchReferenceName(tagOrbranch)})
+
+	commitHash, err := wt.Commit(fmt.Sprintf("Promote to tag %s", newTag), nil)
 	if err != nil {
-		if err == plumbing.ErrReferenceNotFound {
-			if _, err = repo.Tag(tagOrbranch); err != nil {
-				return err
-			}
-			err = wt.Checkout(&git.CheckoutOptions{Hash: plumbing.NewHash(tagOrbranch)})
-			if err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
+		return err
 	}
+
+	_, err = repo.CreateTag(newTag, commitHash, nil)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("✅ Changes promoted and tagged as %s\n", newTag)
 	return nil
 }
 

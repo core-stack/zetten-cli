@@ -8,7 +8,6 @@ import (
 )
 
 type PackageFile struct {
-	Branch     string `yaml:"branch,omitempty"`
 	Tag        string `yaml:"tag,omitempty"`
 	Repository string `yaml:"repository"`
 	Path       string `yaml:"-"`
@@ -31,23 +30,11 @@ func (c *PackageFile) GetName() string {
 func (c *PackageFile) GetTag() string {
 	return c.Tag
 }
-func (c *PackageFile) GetBranch() string {
-	return c.Branch
-}
 func (c *PackageFile) GetRepository() string {
 	return c.Repository
 }
 func (c *PackageFile) SetTag(tag string, autoSave bool) error {
 	c.Tag = tag
-	c.Branch = ""
-	if autoSave {
-		return c.Save()
-	}
-	return nil
-}
-func (c *PackageFile) SetBranch(branch string, autoSave bool) error {
-	c.Branch = branch
-	c.Tag = ""
 	if autoSave {
 		return c.Save()
 	}
@@ -66,10 +53,7 @@ func (c *PackageFile) UpdateFrom(other *PackageFile, autoSave bool) error {
 	}
 	if other.Tag != "" {
 		c.SetTag(other.Tag, false)
-	} else if other.Branch != "" {
-		c.SetBranch(other.Branch, false)
 	}
-
 	if autoSave {
 		return c.Save()
 	}

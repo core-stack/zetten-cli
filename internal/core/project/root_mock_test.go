@@ -13,14 +13,17 @@ type MockRootConfig struct{}
 func (m *MockRootConfig) OpenOrClonePackage(url string) (*git.Repository, error) {
 	return nil, nil
 }
-func (m *MockRootConfig) Checkout(url, tag string) error {
+func (m *MockRootConfig) Checkout(url, tag string) (*git.Repository, error) {
 	if tag == "error" {
-		return errors.New("checkout failed")
+		return nil, errors.New("checkout failed")
 	}
-	return nil
+	return nil, nil
 }
 func (m *MockRootConfig) CopyRootFiles(url, destination string, ignore []string) error {
 	return os.MkdirAll(destination, 0755)
+}
+func (m *MockRootConfig) Promote(url, tag, newTag, packageDir string) error {
+	return nil
 }
 func (m *MockRootConfig) HasPackage(url string) bool {
 	return true

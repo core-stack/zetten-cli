@@ -33,7 +33,7 @@ func TestPackageFile_GetName(t *testing.T) {
 	assert.Equal(t, "", p.GetName())
 }
 
-func TestPackageFile_SetTagAndBranch(t *testing.T) {
+func TestPackageFile_SetTag(t *testing.T) {
 	tmp := t.TempDir()
 	path := filepath.Join(tmp, "pkg.yaml")
 
@@ -41,22 +41,10 @@ func TestPackageFile_SetTagAndBranch(t *testing.T) {
 	err := p.SetTag("v1.0.0", true)
 	assert.NoError(t, err)
 	assert.Equal(t, "v1.0.0", p.Tag)
-	assert.Equal(t, "", p.Branch)
 
 	loaded, err := readPackageFile(path)
 	assert.NoError(t, err)
 	assert.Equal(t, "v1.0.0", loaded.Tag)
-	assert.Equal(t, "", loaded.Branch)
-
-	err = p.SetBranch("main", true)
-	assert.NoError(t, err)
-	assert.Equal(t, "main", p.Branch)
-	assert.Equal(t, "", p.Tag)
-
-	loaded, err = readPackageFile(path)
-	assert.NoError(t, err)
-	assert.Equal(t, "main", loaded.Branch)
-	assert.Equal(t, "", loaded.Tag)
 }
 
 func TestPackageFile_SetRepository(t *testing.T) {
@@ -86,18 +74,18 @@ func TestPackageFile_UpdateFrom(t *testing.T) {
 
 	other := &pkg.PackageFile{
 		Repository: "new.com/repo",
-		Branch:     "develop",
+		Tag:        "1.0.0",
 	}
 
 	err := p.UpdateFrom(other, true)
 	assert.NoError(t, err)
 	assert.Equal(t, "new.com/repo", p.Repository)
-	assert.Equal(t, "develop", p.Branch)
+	assert.Equal(t, "1.0.0", p.Tag)
 	assert.Equal(t, "", p.Tag)
 
 	loaded, err := readPackageFile(path)
 	assert.NoError(t, err)
 	assert.Equal(t, "new.com/repo", loaded.Repository)
-	assert.Equal(t, "develop", loaded.Branch)
+	assert.Equal(t, "1.0.0", loaded.Tag)
 	assert.Equal(t, "", loaded.Tag)
 }

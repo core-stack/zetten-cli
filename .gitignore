@@ -4,3 +4,5 @@ build
 
 
 zetten-auth.yml
+# Added by goreleaser init:
+dist/

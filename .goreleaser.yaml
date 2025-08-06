@@ -1,30 +1,44 @@
-project_name: zetten
-builds:
-  - id: cli
-    main: ./cmd/cli/main.go
-    binary: zetten
-    goos: [linux, windows, darwin]
-    goarch: [amd64, arm64]
-    env: [CGO_ENABLED=0]
+version: 2
 
-  - id: service
-    main: ./cmd/service/main.go
+before:
+  hooks:
+    # You may remove this if you don't use go modules.
+    - go mod tidy
+
+builds:
+  - id: zetten-cli
+    env:
+      - CGO_ENABLED=0
+    binary: zetten-cli
+    main: ./cmd/cli
+  - id: zetten-service
+    env:
+      - CGO_ENABLED=0
     binary: zetten-service
-    goos: [linux, windows, darwin]
-    goarch: [amd64, arm64]
-    env: [CGO_ENABLED=0]
+    main: ./cmd/service
 
 archives:
-  - id: full
-    name_template: "{{ .ProjectName }}-{{ .Os }}-{{ .Arch }}"
-    builds: [cli, service]
-    files:
-      - LICENSE
-      - README.md
-      - scripts/install.sh
-      - scripts/install.exe
+  - formats: [tar.gz]
+    ids:
+      - zetten-cli
+      - zetten-service
+    # this name template makes the OS and Arch compatible with the results of `uname`.
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    # use zip for windows archives
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
 
 release:
-  github:
-    owner: core-stack
-    name: zetten-cli
+  footer: >-
+
+    ---
+
+    Released by [GoReleaser](https://github.com/goreleaser/goreleaser).

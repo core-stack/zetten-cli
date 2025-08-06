@@ -1,7 +1,3 @@
-name: zetten-cli
+name: zetten
 version: 1.0.0
-dependencies:
-    https://github.com/FVitorr/prolog-trabI: main
-    https://github.com/core-stack/zetten-public-test.git: main
-path: packages
-default_provider: ""
+packagesPath: packages

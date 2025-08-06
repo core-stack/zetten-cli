@@ -4,11 +4,14 @@ go 1.24.4
 
 require (
 	github.com/alecthomas/kong v1.12.0
+	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-git/go-git/v5 v5.16.2
 	github.com/goccy/go-yaml v1.18.0
+	github.com/kardianos/service v1.2.4
 	github.com/manifoldco/promptui v0.9.0
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/crypto v0.40.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -33,5 +36,4 @@ require (
 	golang.org/x/net v0.41.0 // indirect
 	golang.org/x/sys v0.34.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

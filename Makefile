@@ -1,5 +1,6 @@
 
-BINARY_NAME=zetten
+BINARY_CLI_NAME=zetten-cli
+BINARY_SERVICE_NAME=zetten-service
 
 ARGS=""
 
@@ -7,21 +8,38 @@ ARGS=""
 
 all: build
 
-build:
+build-cli:
 	@echo "🔨 Building..."
-	go build -o bin/$(BINARY_NAME) .
+	go build -o bin/$(BINARY_CLI_NAME) ./cmd/cli
 
-run: build
+run-cli: build
 	@echo "🚀 Running..."
-	./bin/$(BINARY_NAME) $(ARGS)
+	./bin/$(BINARY_CLI_NAME) $(ARGS)
 
-install:
+install-cli:
+	@echo "📦 install $(GOBIN)..."
+	go install .
+
+clean-cli:
+	@echo "🧹 Cleaning..."
+	rm -f $(BINARY_CLI_NAME)
+
+test:
+	go test ./... -v
+
+
+build-service:
+	@echo "🔨 Building..."
+	go build -o bin/$(BINARY_SERVICE_NAME) ./cmd/service
+
+run-service: build
+	@echo "🚀 Running..."
+	./bin/$(BINARY_SERVICE_NAME) $(ARGS)
+
+install-service:
 	@echo "📦 install $(GOBIN)..."
 	go install .
 
 clean:
 	@echo "🧹 Cleaning..."
-	rm -f $(BINARY_NAME)
-
-test:
-	go test ./... -v
+	rm -f $(BINARY_SERVICE_NAME)

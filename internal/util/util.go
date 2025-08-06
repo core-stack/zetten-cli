@@ -60,3 +60,26 @@ func IsValidURL(toTest string) bool {
 
 	return err == nil
 }
+
+func ExtractPathFromURL(targetUrl string) string {
+	u, err := url.Parse(targetUrl)
+	if err != nil {
+		return ""
+	}
+	return u.Path
+}
+
+func MapKeys[T map[K]V, K comparable, V any](m T) []K {
+	var keys []K
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+func MapValues[T map[K]V, K comparable, V any](m T) []V {
+	var values []V
+	for _, v := range m {
+		values = append(values, v)
+	}
+	return values
+}

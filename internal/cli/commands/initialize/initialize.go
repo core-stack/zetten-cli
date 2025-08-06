@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/core-stack/zetten-cli/internal/cli/prompt"
 	"github.com/core-stack/zetten-cli/internal/core/project"
-	"github.com/core-stack/zetten-cli/internal/prompt"
 )
 
 type InitCommand struct {

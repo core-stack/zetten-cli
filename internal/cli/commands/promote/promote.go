@@ -1,8 +1,8 @@
 package promote
 
 import (
+	"github.com/core-stack/zetten-cli/internal/cli/prompt"
 	"github.com/core-stack/zetten-cli/internal/core/project"
-	"github.com/core-stack/zetten-cli/internal/prompt"
 	"github.com/core-stack/zetten-cli/internal/util"
 )
 

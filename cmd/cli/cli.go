@@ -2,11 +2,11 @@ package main
 
 import (
 	"github.com/alecthomas/kong"
-	"github.com/core-stack/zetten-cli/internal/commands/initialize"
-	"github.com/core-stack/zetten-cli/internal/commands/install"
-	"github.com/core-stack/zetten-cli/internal/commands/promote"
-	"github.com/core-stack/zetten-cli/internal/commands/sync"
-	"github.com/core-stack/zetten-cli/internal/commands/uninstall"
+	"github.com/core-stack/zetten-cli/internal/cli/commands/initialize"
+	"github.com/core-stack/zetten-cli/internal/cli/commands/install"
+	"github.com/core-stack/zetten-cli/internal/cli/commands/promote"
+	"github.com/core-stack/zetten-cli/internal/cli/commands/sync"
+	"github.com/core-stack/zetten-cli/internal/cli/commands/uninstall"
 )
 
 var cli struct {

@@ -1,9 +1,9 @@
 package install
 
 import (
+	"github.com/core-stack/zetten-cli/internal/cli/git_util"
+	"github.com/core-stack/zetten-cli/internal/cli/prompt"
 	"github.com/core-stack/zetten-cli/internal/core/project"
-	"github.com/core-stack/zetten-cli/internal/git_util"
-	"github.com/core-stack/zetten-cli/internal/prompt"
 )
 
 type InstallCommand struct {

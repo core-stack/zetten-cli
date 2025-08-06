@@ -30,7 +30,7 @@ func (r *RootFile) AddProject(dir string, autoSave bool) error {
 func (r *RootFile) RemoveProject(dir string, autoSave bool) error {
 	for i, p := range r.ZettenProjects {
 		if p == dir {
-			r.ZettenProjects = append(r.ZettenProjects[:i], r.ZettenProjects[i+1:]...)
+			r.ZettenProjects = slices.Delete(r.ZettenProjects, i, i+1)
 			if autoSave {
 				return r.Save()
 			}

@@ -1,0 +1,30 @@
+project_name: zetten
+builds:
+  - id: cli
+    main: ./cmd/cli/main.go
+    binary: zetten
+    goos: [linux, windows, darwin]
+    goarch: [amd64, arm64]
+    env: [CGO_ENABLED=0]
+
+  - id: service
+    main: ./cmd/service/main.go
+    binary: zetten-service
+    goos: [linux, windows, darwin]
+    goarch: [amd64, arm64]
+    env: [CGO_ENABLED=0]
+
+archives:
+  - id: full
+    name_template: "{{ .ProjectName }}-{{ .Os }}-{{ .Arch }}"
+    builds: [cli, service]
+    files:
+      - LICENSE
+      - README.md
+      - scripts/install.sh
+      - scripts/install.exe
+
+release:
+  github:
+    owner: core-stack
+    name: zetten-cli

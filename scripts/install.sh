@@ -2,7 +2,7 @@
 
 set -e
 
-CLI_NAME="zetten"
+CLI_NAME="zetten-cli"
 SERVICE_NAME="zetten-service"
 INSTALL_DIR="/usr/local/bin"
 ROOT_DIR="$HOME/.zetten"

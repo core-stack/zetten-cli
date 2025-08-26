@@ -7,7 +7,6 @@ import (
 	"github.com/go-git/go-git/v5"
 )
 
-// MockRootConfig finge o comportamento real
 type MockRootConfig struct{}
 
 func (m *MockRootConfig) OpenOrClonePackage(url string) (*git.Repository, error) {
@@ -31,4 +30,8 @@ func (m *MockRootConfig) HasPackage(url string) bool {
 
 func (m *MockRootConfig) BuildRootPackagePath(url string) string {
 	return "/fake/path"
+}
+
+func NewMockRootConfig() *MockRootConfig {
+	return &MockRootConfig{}
 }

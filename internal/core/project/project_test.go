@@ -45,7 +45,7 @@ func TestInstall_Success(t *testing.T) {
 			PackagesPath: pkgs,
 			Dependencies: project.Dependency{},
 		},
-		Root: &MockRootConfig{},
+		Root: NewMockRootConfig(),
 	}
 
 	err := cfg.Install("github.com/user/repo", "v1.0.0")
@@ -66,7 +66,7 @@ func TestInstall_CheckoutFails(t *testing.T) {
 			PackagesPath: t.TempDir(),
 			Dependencies: project.Dependency{},
 		},
-		Root: &MockRootConfig{},
+		Root: NewMockRootConfig(),
 	}
 	err := cfg.Install("github.com/user/repo", "error")
 	assert.Error(t, err)
@@ -105,7 +105,7 @@ func TestSync_Success(t *testing.T) {
 				"github.com/user/repo2": "v2.0.0",
 			},
 		},
-		Root: &MockRootConfig{},
+		Root: NewMockRootConfig(),
 	}
 
 	err := cfg.Sync()

@@ -6,16 +6,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/core-stack/zetten-cli/config"
+	"github.com/core-stack/zetten-cli/internal/core/auth"
 	"github.com/core-stack/zetten-cli/internal/core/file"
 	"github.com/core-stack/zetten-cli/internal/util"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 )
-
-var home, err = os.UserHomeDir()
-var DEFAULT_ROOT_PATH = filepath.Join(home, ".zetten")
-var DEFAULT_ROOT_CONFIG_PATH = filepath.Join(DEFAULT_ROOT_PATH, "config.yml")
-var DEFAULT_ROOT_PACKAGES_PATH = filepath.Join(DEFAULT_ROOT_PATH, "packages")
 
 type IRootConfig interface {
 	BuildRootPackagePath(url string) string
@@ -26,11 +23,12 @@ type IRootConfig interface {
 	Promote(url, tag, newTag, packageDir string) error
 }
 type RootConfig struct {
-	RootFile `yaml:",inline"`
+	RootFile   `yaml:",inline"`
+	AuthConfig auth.IAuthConfig
 }
 
 func (r *RootConfig) BuildRootPackagePath(url string) string {
-	return filepath.Join(DEFAULT_ROOT_PACKAGES_PATH, strings.TrimSuffix(util.ExtractPathFromURL(url), ".git"))
+	return filepath.Join(config.DEFAULT_ROOT_PACKAGES_PATH, strings.TrimSuffix(util.ExtractPathFromURL(url), ".git"))
 }
 
 func (r *RootConfig) HasPackage(url string) bool {
@@ -41,10 +39,23 @@ func (r *RootConfig) HasPackage(url string) bool {
 func (r *RootConfig) OpenOrClonePackage(url string) (*git.Repository, error) {
 	destination := r.BuildRootPackagePath(url)
 	if r.HasPackage(url) {
-		return git.PlainOpen(destination)
+		repo, err := git.PlainOpen(destination)
+		if err != nil {
+			return repo, err
+		}
+		return repo, repo.Fetch(&git.FetchOptions{Progress: os.Stdout})
 	}
 
+	auth, err := r.AuthConfig.FindAuth(url)
+	if err != nil {
+		return nil, err
+	}
+	authMethod, err := auth.ToAuthMethod()
+	if err != nil {
+		return nil, err
+	}
 	repo, err := git.PlainClone(destination, false, &git.CloneOptions{
+		Auth:     authMethod,
 		URL:      url,
 		Progress: os.Stdout,
 	})
@@ -118,26 +129,27 @@ func (r *RootConfig) CopyRootFiles(url, packagesDir string, ignore []string) err
 	return util.CopyDir(srcDir, packagesDir, ignore)
 }
 
-func LoadRootConfig() (*RootConfig, error) {
-	if _, err := os.Stat(DEFAULT_ROOT_PATH); os.IsNotExist(err) {
-		if err := os.MkdirAll(DEFAULT_ROOT_PATH, os.ModePerm); err != nil {
+func LoadRootConfig(authConfig auth.IAuthConfig) (*RootConfig, error) {
+	if _, err := os.Stat(config.DEFAULT_ROOT_PATH); os.IsNotExist(err) {
+		if err := os.MkdirAll(config.DEFAULT_ROOT_PATH, os.ModePerm); err != nil {
 			return nil, fmt.Errorf("❌ Failed to create root config directory: %w", err)
 		}
 	}
 
-	if _, err := os.Stat(DEFAULT_ROOT_CONFIG_PATH); os.IsNotExist(err) {
+	if _, err := os.Stat(config.DEFAULT_ROOT_CONFIG_PATH); os.IsNotExist(err) {
 		defaultRoot := &RootFile{
-			Path:           DEFAULT_ROOT_CONFIG_PATH,
+			Path:           config.DEFAULT_ROOT_CONFIG_PATH,
 			ZettenProjects: []string{},
 		}
 		if err := defaultRoot.Save(); err != nil {
 			return nil, fmt.Errorf("❌ Failed to create default root config: %w", err)
 		}
 	}
-	cfg, err := file.Load[RootConfig](DEFAULT_ROOT_CONFIG_PATH)
+	cfg, err := file.Load[RootConfig](config.DEFAULT_ROOT_CONFIG_PATH)
 	if err != nil {
 		return nil, err
 	}
-	cfg.Path = DEFAULT_ROOT_CONFIG_PATH
+	cfg.AuthConfig = authConfig
+	cfg.Path = config.DEFAULT_ROOT_CONFIG_PATH
 	return cfg, nil
 }

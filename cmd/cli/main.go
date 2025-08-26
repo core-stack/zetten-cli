@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/alecthomas/kong"
+	"github.com/core-stack/zetten-cli/internal/cli/commands/auth"
 	"github.com/core-stack/zetten-cli/internal/cli/commands/initialize"
 	"github.com/core-stack/zetten-cli/internal/cli/commands/install"
 	"github.com/core-stack/zetten-cli/internal/cli/commands/promote"
@@ -10,6 +11,7 @@ import (
 )
 
 var cli struct {
+	Auth      auth.AuthCommand           `cmd:"" help:"Manage authentication credentials."`
 	Init      initialize.InitCommand     `cmd:"" help:"Initialize a new project."`
 	Install   install.InstallCommand     `cmd:"" help:"Install a package."`
 	Uninstall uninstall.UninstallCommand `cmd:"" help:"Uninstall a package."`

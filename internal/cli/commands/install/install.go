@@ -34,7 +34,7 @@ func (c *InstallCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	tag, err := git_util.LoadTag(repo, c.Tag)
+	tag, err := git_util.LoadTag(repo, c.Tag, false)
 	if err != nil {
 		return err
 	}

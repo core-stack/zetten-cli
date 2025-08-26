@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/core-stack/zetten-cli/internal/core/auth"
 	"github.com/core-stack/zetten-cli/internal/core/file"
 	"github.com/core-stack/zetten-cli/internal/core/root"
 	"github.com/core-stack/zetten-cli/internal/util"
@@ -54,7 +55,7 @@ func (p *ProjectConfig) Install(url, tag string) error {
 }
 
 func (p *ProjectConfig) Uninstall(urls []string) error {
-	if p.Dependencies == nil || len(p.Dependencies) == 0 {
+	if len(p.Dependencies) == 0 {
 		return errors.New("no dependencies found")
 	}
 	if len(urls) == 0 {
@@ -128,7 +129,11 @@ func LoadProjectConfig(path string) (*ProjectConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	if root, err := root.LoadRootConfig(); err != nil {
+	auth, err := auth.LoadAuthConfigs(auth.WithPath(path))
+	if err != nil {
+		return nil, err
+	}
+	if root, err := root.LoadRootConfig(auth); err != nil {
 		return nil, err
 	} else {
 		cfg.Root = root
@@ -138,7 +143,11 @@ func LoadProjectConfig(path string) (*ProjectConfig, error) {
 }
 
 func NewProjectConfig(path, name, version, packagesPath string) (*ProjectConfig, error) {
-	root, err := root.LoadRootConfig()
+	auth, err := auth.LoadAuthConfigs(auth.WithPath(path))
+	if err != nil {
+		return nil, err
+	}
+	root, err := root.LoadRootConfig(auth)
 	if err != nil {
 		return nil, err
 	}

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/core-stack/zetten-cli/config"
 	"github.com/core-stack/zetten-cli/internal/core/root"
 	"github.com/stretchr/testify/assert"
 )
@@ -12,7 +13,7 @@ import (
 func TestBuildRootPackagePath(t *testing.T) {
 	r := &root.RootConfig{}
 	url := "https://github.com/user/repo.git"
-	expected := filepath.Join(root.DEFAULT_ROOT_PACKAGES_PATH, "user/repo")
+	expected := filepath.Join(config.DEFAULT_ROOT_PACKAGES_PATH, "user/repo")
 
 	result := r.BuildRootPackagePath(url)
 	assert.Equal(t, expected, result)
@@ -34,17 +35,17 @@ func TestHasPackage(t *testing.T) {
 
 func TestLoadRootConfig_CreatesConfig(t *testing.T) {
 	// Redefinindo paths globalmente (não ideal, mas necessário para testar isoladamente)
-	originalPath := root.DEFAULT_ROOT_PATH
-	root.DEFAULT_ROOT_PATH = t.TempDir()
-	root.DEFAULT_ROOT_CONFIG_PATH = filepath.Join(root.DEFAULT_ROOT_PATH, "config.yml")
-	root.DEFAULT_ROOT_PACKAGES_PATH = filepath.Join(root.DEFAULT_ROOT_PATH, "packages")
-	defer func() { root.DEFAULT_ROOT_PATH = originalPath }()
+	originalPath := config.DEFAULT_ROOT_PATH
+	config.DEFAULT_ROOT_PATH = t.TempDir()
+	config.DEFAULT_ROOT_CONFIG_PATH = filepath.Join(config.DEFAULT_ROOT_PATH, "config.yml")
+	config.DEFAULT_ROOT_PACKAGES_PATH = filepath.Join(config.DEFAULT_ROOT_PATH, "packages")
+	defer func() { config.DEFAULT_ROOT_PATH = originalPath }()
 
-	cfg, err := root.LoadRootConfig()
+	cfg, err := root.LoadRootConfig(NewMockAuthConfig())
 	assert.NoError(t, err)
 	assert.NotNil(t, cfg)
-	assert.FileExists(t, root.DEFAULT_ROOT_CONFIG_PATH)
-	assert.Equal(t, root.DEFAULT_ROOT_CONFIG_PATH, cfg.Path)
+	assert.FileExists(t, config.DEFAULT_ROOT_CONFIG_PATH)
+	assert.Equal(t, config.DEFAULT_ROOT_CONFIG_PATH, cfg.Path)
 	assert.Empty(t, cfg.ZettenProjects)
 }
 

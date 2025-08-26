@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/core-stack/zetten-cli/internal/core/auth"
 	"github.com/core-stack/zetten-cli/internal/core/root"
 	"github.com/fsnotify/fsnotify"
 )
@@ -23,7 +24,11 @@ var (
 )
 
 func StartMirrorService(configPath string) error {
-	cfg, err := root.LoadRootConfig()
+	authCfg, err := auth.LoadAuthConfigs()
+	if err != nil {
+		return err
+	}
+	cfg, err := root.LoadRootConfig(authCfg)
 	if err != nil {
 		return err
 	}

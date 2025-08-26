@@ -46,31 +46,37 @@ func (r *RootConfig) OpenOrClonePackage(url string) (*git.Repository, error) {
 		return repo, repo.Fetch(&git.FetchOptions{Progress: os.Stdout})
 	}
 
-	auth, err := r.AuthConfig.FindAuth(url)
-	if err != nil {
-		return nil, err
-	}
-	authMethod, err := auth.ToAuthMethod()
-	if err != nil {
-		return nil, err
-	}
 	repo, err := git.PlainClone(destination, false, &git.CloneOptions{
-		Auth:     authMethod,
 		URL:      url,
 		Progress: os.Stdout,
 	})
 	if err != nil {
-		return repo, err
+		auth, err := r.AuthConfig.FindAuth(url)
+		if err != nil {
+			return nil, err
+		}
+		authMethod, err := auth.ToAuthMethod()
+		if err != nil {
+			return nil, err
+		}
+		repo, err = git.PlainClone(destination, false, &git.CloneOptions{
+			Auth:     authMethod,
+			URL:      url,
+			Progress: os.Stdout,
+		})
+		if err != nil {
+			return repo, err
+		}
 	}
 	return repo, nil
 }
 
 func (r *RootConfig) Checkout(url, tag string) (*git.Repository, error) {
 	if tag == "" {
-		return nil, fmt.Errorf("No tag specified")
+		return nil, fmt.Errorf("no tag specified")
 	}
 	if url == "" {
-		return nil, fmt.Errorf("No url specified")
+		return nil, fmt.Errorf("no url specified")
 	}
 	repo, err := r.OpenOrClonePackage(url)
 	if err != nil {

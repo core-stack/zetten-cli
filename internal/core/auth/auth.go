@@ -22,8 +22,8 @@ type IAuthConfig interface {
 }
 
 type AuthConfig struct {
-	Global AuthFile
-	Local  AuthFile
+	Global *AuthFile
+	Local  *AuthFile
 }
 
 func (l *AuthConfig) FindAuth(repoUrl string) (*Auth, error) {
@@ -42,22 +42,19 @@ func (l *AuthConfig) FindAuth(repoUrl string) (*Auth, error) {
 			return cfg, nil
 		}
 	}
+	defaultAuth := l.Global.Auths["default"]
+	if defaultAuth.Credentials != "" {
+		return &defaultAuth, nil
+	}
 	return nil, ErrNoAuthConfigFound
 }
 
 func (l *AuthConfig) loadByHostPath(host string, path string) (*Auth, bool) {
 	hostPath := fmt.Sprintf("%s%s", host, path)
-
+	fmt.Println(hostPath)
 	// find config by host path
-	cfg, exists := util.FindInMap(l.Local.Auths,
-		func(k string, v Auth) bool {
-			return k == hostPath
-		},
-	)
-	if exists {
-		return &cfg, true
-	} else {
-		cfg, exists = util.FindInMap(l.Global.Auths,
+	if l.Local != nil {
+		cfg, exists := util.FindInMap(l.Local.Auths,
 			func(k string, v Auth) bool {
 				return k == hostPath
 			},
@@ -65,8 +62,16 @@ func (l *AuthConfig) loadByHostPath(host string, path string) (*Auth, bool) {
 		if exists {
 			return &cfg, true
 		}
-		return nil, false
 	}
+	cfg, exists := util.FindInMap(l.Global.Auths,
+		func(k string, v Auth) bool {
+			return k == hostPath
+		},
+	)
+	if exists {
+		return &cfg, true
+	}
+	return nil, false
 }
 
 func (l *AuthConfig) AddAuth(scope Scope, name string, method string, credentials string, autoSave bool) error {
@@ -111,24 +116,36 @@ func LoadAuthConfigs(opts ...func(config *LoadAuthConfigsParams)) (IAuthConfig, 
 		}
 	}
 
-	// load auth configs
+	authConfig := AuthConfig{}
+
+	// load global auth configs
 	global, err := file.Load[AuthFile](config.DEFAULT_ROOT_AUTHS_PATH)
 	if err != nil {
 		return nil, err
 	}
 	global.Path = config.DEFAULT_ROOT_AUTHS_PATH
 	global.Scope = ScopeGlobal
+	authConfig.Global = global
 
-	local, err := file.Load[AuthFile](params.Path)
-	if err != nil {
-		return nil, err
+	// load local auth configs
+	if params.Path != "" {
+		if _, err := os.Stat(params.Path); os.IsNotExist(err) {
+			authFile := &AuthFile{
+				Path:  params.Path,
+				Scope: ScopeLocal,
+			}
+			if err = authFile.Save(); err != nil {
+				return nil, fmt.Errorf("❌ Failed to create auth file: %w", err)
+			}
+		}
+		local, err := file.Load[AuthFile](params.Path)
+		if err != nil {
+			return nil, err
+		}
+		local.Path = params.Path
+		local.Scope = ScopeLocal
+		authConfig.Local = local
 	}
-	local.Path = params.Path
-	local.Scope = ScopeLocal
 
-	return &AuthConfig{Global: *global, Local: *local}, nil
-}
-
-func NewAuthConfig() *AuthConfig {
-	return &AuthConfig{}
+	return &authConfig, nil
 }

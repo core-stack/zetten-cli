@@ -14,7 +14,7 @@ func Load[T any](path string) (*T, error) {
 		path = "."
 	}
 	if _, err := os.Stat(path); err != nil {
-		return &cfg, fmt.Errorf("⚠️ Configuration file not found. Navigate to the root directory and run `zetten init`")
+		return &cfg, fmt.Errorf("file not found")
 	}
 
 	data, err := os.ReadFile(path)

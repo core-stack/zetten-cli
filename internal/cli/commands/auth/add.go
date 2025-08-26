@@ -11,17 +11,21 @@ import (
 )
 
 type AddCommand struct {
-	Local      bool   `short:"l" help:"Add authentication credentials to the local config"`
-	Type       string `arg:"" help:"Authentication type" enum:"http,ssh"`
-	Scope      string `arg:"" help:"Authentication scope"`
-	Credential string `arg:"" help:"Authentication credentials"`
+	Local      bool   `short:"l" long:"local" help:"Add authentication credentials to the local config"`
+	Type       string `short:"t" long:"type" help:"Authentication type"`
+	Path       string `short:"p" long:"path" help:"Authentication path" default:"default"`
+	Credential string `short:"c"  long:"credential" help:"Authentication credentials"`
 
 	auth auth_core.IAuthConfig
 }
 
 func (c *AddCommand) BeforeApply() error {
 	var err error
-	c.auth, err = auth_core.LoadAuthConfigs(auth_core.WithPath("./"))
+	if c.Local {
+		c.auth, err = auth_core.LoadAuthConfigs(auth_core.WithPath("./zetten-auth.yml"))
+	} else {
+		c.auth, err = auth_core.LoadAuthConfigs()
+	}
 	if err != nil {
 		return err
 	}
@@ -52,7 +56,7 @@ func (c *AddCommand) Run() error {
 	if c.Local {
 		scope = auth_core.ScopeLocal
 	}
-	return c.auth.AddAuth(scope, c.Scope, c.Type, c.Credential, true)
+	return c.auth.AddAuth(scope, c.Path, c.Type, c.Credential, true)
 }
 
 func (c *AddCommand) handleHTTP() error {
